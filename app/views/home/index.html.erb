@@ -1,7 +1,82 @@
-<h1>Knockout Test</h1>
+<h2>Knockout Test</h2>
 
-<p>Hello, <span data-bind="text: name"></span></p>
+<form data-bind="submit: addZone">
+    Add zone: <input data-bind="value: newZoneName" placeholder="Type zone name" />    
+    <button class="btn btn-primary" type="submit">Add Zone</button>
+    <input type="hidden" name="zones" type="hidden" data-bind="value: ko.toJSON(zones)" />
+</form>
+
+<table class="table">
+	<thead>
+		<th>Zone Name</th>
+		<th></th>
+		<th></th>
+	</thead>
+	<tbody data-bind="foreach: zones">
+		<tr data-bind="rowFadeIn: true">
+			<td data-bind="text: zone_name"></td>	
+			<td><a class="btn btn-mini">Edit</a></td>
+			<td><a data-bind="click: $parent.removeZone" class="btn btn-mini btn-danger">Delete</a></td>
+		</tr>
+	</tbody>
+</table>
+
 
 <script>
-	ko.applyBindings({name: ko.observable("World")})
+	
+	function Zone(data) {
+		this.zone_name = ko.observable(data.zone_name);
+	}
+	
+	function ZoneListViewModel() {
+		// Data
+		var self = this;
+		self.zones = ko.observableArray([]);
+		self.newZoneName = ko.observable();
+		
+		self.addZone = function() {
+			self.zones.push(new Zone({ 
+					zone_name: self.newZoneName()	
+				}) 
+			);		
+			self.newZoneName("");
+		};
+		
+		self.removeZone = function(zone) {
+			self.zones.remove(zone);
+		}
+		
+		 // Load initial state from server, convert it to Task instances, then populate self.tasks
+	   $.getJSON("/zones", function(allData) {
+	       var mappedTasks = $.map(allData, function(zone) { return new Zone(zone) });
+	       self.zones(mappedTasks);
+	   });    
+	   
+		ko.bindingHandlers.rowFadeIn = {
+	    init: function(element, valueAccessor, allBindingsAccessor, viewModel) {
+	        // This will be called when the binding is first applied to an element
+	        // Set up any initial state, event handlers, etc. here
+	        $(element).hide();
+	        
+	    },
+	    update: function(element, valueAccessor, allBindingsAccessor, viewModel) {
+	        // This will be called once when the binding is first applied to an element,
+	        // and again whenever the associated observable changes value.
+	        // Update the DOM element based on the supplied values here.
+	        
+				// First get the latest data that we're bound to
+        		var value = valueAccessor(), allBindings = allBindingsAccessor();
+	    
+	    		// Next, whether or not the supplied model property is observable, get its current value
+        		var valueUnwrapped = ko.utils.unwrapObservable(value); 
+	    		
+	    		if (valueUnwrapped == true) 
+            	$(element).fadeIn("fast"); // Make the element visible
+	    
+	    }
+};
+		
+	}
+	
+	ko.applyBindings(new ZoneListViewModel());
 </script>

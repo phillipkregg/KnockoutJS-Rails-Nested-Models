@@ -1,4 +1,11 @@
 CodeschoolKnockout::Application.routes.draw do
+  
+  #resources :rooms
+
+  resources :zones do
+    resources :rooms
+  end
+
   get "home/index"
 
   # The priority is based upon order of creation:
