@@ -2,19 +2,23 @@
 
 <form data-bind="submit: addZone">
     Add zone: <input data-bind="value: newZoneName" placeholder="Type zone name" />    
-    <button class="btn btn-primary" type="submit">Add Zone</button>
+    <button class="btn btn-primary " type="submit">Add Zone</button>
     <input type="hidden" name="zones" type="hidden" data-bind="value: ko.toJSON(zones)" />
 </form>
 
 <table class="table">
 	<thead>
+		<th>Zone ID</th>
 		<th>Zone Name</th>
+		<th></th>
 		<th></th>
 		<th></th>
 	</thead>
 	<tbody data-bind="foreach: zones">
 		<tr data-bind="rowFadeIn: true">
+			<td data-bind="text: id"></td>
 			<td data-bind="text: zone_name"></td>	
+			<td><a data-bind="click: $parent.getRooms" class="btn btn-mini">View Rooms</a></td>
 			<td><a class="btn btn-mini">Edit</a></td>
 			<td><a data-bind="click: $parent.removeZone" class="btn btn-mini btn-danger">Delete</a></td>
 		</tr>
@@ -22,16 +26,42 @@
 </table>
 
 
+<table class="table">
+	<thead>
+		<th>Zone ID</th>
+		<th>Zone Name</th>
+		
+	</thead>
+	<tbody data-bind="foreach: rooms">
+		<tr data-bind="rowFadeIn: true">
+			<td data-bind="text: zone_id"></td>
+			<td data-bind="text: room_name"></td>	
+			
+		</tr>
+	</tbody>
+</table>
+
+
+
+
 <script>
 	
+
 	function Zone(data) {
 		this.zone_name = ko.observable(data.zone_name);
+		this.id = ko.observable(data.id);
+	}
+	
+	function Room(data) {
+		this.room_name = ko.observable(data.room_name);
+		this.zone_id = ko.observable(data.zone_id);
 	}
 	
 	function ZoneListViewModel() {
 		// Data
 		var self = this;
 		self.zones = ko.observableArray([]);
+		self.rooms = ko.observableArray([]);
 		self.newZoneName = ko.observable();
 		
 		self.addZone = function() {
@@ -45,12 +75,29 @@
 		self.removeZone = function(zone) {
 			self.zones.remove(zone);
 		}
-		
-		 // Load initial state from server, convert it to Task instances, then populate self.tasks
+				
+		 // Load initial state from server, convert it to Zone instances, then populate self.zones
 	   $.getJSON("/zones", function(allData) {
 	       var mappedTasks = $.map(allData, function(zone) { return new Zone(zone) });
 	       self.zones(mappedTasks);
-	   });    
+	   });  
+	   
+	   
+	   self.getRooms = function() {
+	   	
+	   	var zone_id = this.id();
+	   	
+	   	 // Load initial state from server, convert it to Zone instances, then populate self.zones
+		   $.getJSON("/zones/" + zone_id + "/rooms", function(allData) {
+		       var mappedTasks = $.map(allData, function(room) { return new Room(room) });
+		       self.rooms(mappedTasks);
+		   });  
+	   	
+	   	
+	   }
+	    
+	   
+	     
 	   
 		ko.bindingHandlers.rowFadeIn = {
 	    init: function(element, valueAccessor, allBindingsAccessor, viewModel) {
@@ -65,18 +112,19 @@
 	        // Update the DOM element based on the supplied values here.
 	        
 				// First get the latest data that we're bound to
-        		var value = valueAccessor(), allBindings = allBindingsAccessor();
+	     		var value = valueAccessor(), allBindings = allBindingsAccessor();
 	    
 	    		// Next, whether or not the supplied model property is observable, get its current value
-        		var valueUnwrapped = ko.utils.unwrapObservable(value); 
+	     		var valueUnwrapped = ko.utils.unwrapObservable(value); 
 	    		
 	    		if (valueUnwrapped == true) 
-            	$(element).fadeIn("fast"); // Make the element visible
-	    
-	    }
-};
+	         	$(element).fadeIn("fast"); // Make the element visible
+		    
+		    }
+	};
+			
+		}
 		
-	}
+		ko.applyBindings(new ZoneListViewModel());
 	
-	ko.applyBindings(new ZoneListViewModel());
 </script>
