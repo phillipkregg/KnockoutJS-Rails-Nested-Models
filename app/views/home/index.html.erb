@@ -1,11 +1,14 @@
 <h2>Knockout Test</h2>
 
+<div class="well">
 <form data-bind="submit: addZone">
     Add zone: <input data-bind="value: newZoneName" placeholder="Type zone name" />    
     <button class="btn btn-primary " type="submit">Add Zone</button>
     <input type="hidden" name="zones" type="hidden" data-bind="value: ko.toJSON(zones)" />
 </form>
+</div>
 
+<h3>Zones</h3>
 <table class="table">
 	<thead>
 		<th>Zone ID</th>
@@ -20,43 +23,66 @@
 			<td data-bind="text: zone_name"></td>	
 			<td><a data-bind="click: $parent.getRooms" class="btn btn-mini">View Rooms</a></td>
 			<td><a class="btn btn-mini">Edit</a></td>
-			<td><a data-bind="click: $parent.removeZone" class="btn btn-mini btn-danger">Delete</a></td>
+			<td><a data-bind="click: $parent.destroyAction" class="btn btn-mini btn-danger">Delete</a></td>
 		</tr>
 	</tbody>
 </table>
 
 
-<table class="table">
-	<thead>
-		<th>Zone ID</th>
-		<th>Zone Name</th>
-		
-	</thead>
-	<tbody data-bind="foreach: rooms">
-		<tr data-bind="rowFadeIn: true">
-			<td data-bind="text: zone_id"></td>
-			<td data-bind="text: room_name"></td>	
+<div data-bind="template: { name: 'need-rooms-template' }, visible: showAddRoom" ></div>
+
+<div data-bind="template: { name: 'show-rooms-template' }, visible: showRoomTable" ></div>
+
+
+<!-- ***** TEMPLATES *****  -->
+
+
+<script type="text/html" id="need-rooms-template">
+	<div class="container well">
+		<h3><span>This zone</span> has no rooms.  Would you like to add a Room?</h3></br>
+    	<a class="btn btn-primary btn-large">Add Room</a>		
+	</div>
+   
+</script>
+
+
+<script type="text/html" id="show-rooms-template">	
+	<h3>Rooms</h3>
+	<table class="table">
+		<thead>
+			<th>Zone ID</th>
+			<th>Zone Name</th>
 			
-		</tr>
-	</tbody>
-</table>
+		</thead>
+		<tbody data-bind="foreach: rooms">
+			<tr data-bind="rowFadeIn: true">
+				<td data-bind="text: zone_id"></td>
+				<td data-bind="text: room_name"></td>	
+				
+			</tr>
+		</tbody>
+	</table>	
+</script>
 
 
 
 
-<script>
+<script>		
 	
 
 	function Zone(data) {
+		//var zone = this;
 		this.zone_name = ko.observable(data.zone_name);
 		this.id = ko.observable(data.id);
 	}
 	
 	function Room(data) {
+		//var room = this;
 		this.room_name = ko.observable(data.room_name);
 		this.zone_id = ko.observable(data.zone_id);
 	}
 	
+		
 	function ZoneListViewModel() {
 		// Data
 		var self = this;
@@ -64,17 +90,68 @@
 		self.rooms = ko.observableArray([]);
 		self.newZoneName = ko.observable();
 		
+		self.showAddRoom = ko.observable(false);
+		self.showRoomTable = ko.observable(false);
+		
+		self.zone = ko.observable("zone name");
+		
+		
+		
 		self.addZone = function() {
 			self.zones.push(new Zone({ 
-					zone_name: self.newZoneName()	
-				}) 
+					zone_name: self.newZoneName(),					
+					id: self.zones().length + 1 // remove when pulling from server
+				}) 		        
 			);		
+			
+			$.ajax("/zones", {
+	            data: ko.toJSON({
+		            zone_name: self.newZoneName()
+		         }),
+	            
+	            type: "post", contentType: "application/json",
+	            success: function(result) { console.log(result) }
+	        });	
+			
+			
+			// $.post("/zones", ko.toJSON(self.zones()), function(returnedData) {
+			    // // This callback is executed if the post was successful  
+			    // console.log(returnedData);   
+			// })
+							
 			self.newZoneName("");
 		};
 		
 		self.removeZone = function(zone) {
 			self.zones.remove(zone);
 		}
+		
+		
+		self.destroyAction = function(zone) {
+			
+			self.showAddRoom(false);
+		   self.showRoomTable(true);
+			
+			var zone_id = this.id();
+			
+			self.zones.remove(zone);		    
+		    
+		      $.ajax({
+		        type: "DELETE",
+		        url: '/zones/' + zone_id + '.json',
+		        dataType: "json",
+		        success: function(){
+		          //viewModel.errors([]);
+		          //viewModel.setFlash('Post successfully deleted.');
+		          //viewModel.indexAction();
+		        },
+		        error: function(msg) {
+		          //viewModel.errors(JSON.parse(msg.responseText));
+		        }
+		      });
+		    
+		  }
+				
 				
 		 // Load initial state from server, convert it to Zone instances, then populate self.zones
 	   $.getJSON("/zones", function(allData) {
@@ -85,18 +162,32 @@
 	   
 	   self.getRooms = function() {
 	   	
-	   	var zone_id = this.id();
+	   	self.showAddRoom(false);
+		   self.showRoomTable(true);
 	   	
-	   	 // Load initial state from server, convert it to Zone instances, then populate self.zones
-		   $.getJSON("/zones/" + zone_id + "/rooms", function(allData) {
-		       var mappedTasks = $.map(allData, function(room) { return new Room(room) });
-		       self.rooms(mappedTasks);
-		   });  
+	   	var zone_id = this.id();   	
+	   	self.zone(this.zone_name());
+	   	//alert(self.zone());
 	   	
+	   	
+	   	// Load initial state from server, convert it to Zone instances, then populate self.zones
+		   		   	
+	   	$.getJSON("/zones/" + zone_id + "/rooms", function(allData) {
+	   		
+	   		if(allData != ""){
+	   			var mappedTasks = $.map(allData, function(room) { return new Room(room) });
+		       	self.rooms(mappedTasks);	
+		      }else{
+		      	self.showAddRoom(true);
+		      	self.showRoomTable(false);
+		      	
+		      }
+	       		       
+		   });  	
+		   
+		   
 	   	
 	   }
-	    
-	   
 	     
 	   
 		ko.bindingHandlers.rowFadeIn = {
@@ -120,11 +211,27 @@
 	    		if (valueUnwrapped == true) 
 	         	$(element).fadeIn("fast"); // Make the element visible
 		    
-		    }
-	};
+		    	}
+		};
 			
-		}
+	}
 		
 		ko.applyBindings(new ZoneListViewModel());
 	
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
