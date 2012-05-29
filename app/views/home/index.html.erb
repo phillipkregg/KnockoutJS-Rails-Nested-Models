@@ -29,7 +29,7 @@
 </table>
 
 
-<div data-bind="template: { name: 'need-rooms-template' }, visible: showAddRoom" ></div>
+<div data-bind="template: { name: 'need-rooms-template'}, visible: showAddRoom" ></div>
 
 <div data-bind="template: { name: 'show-rooms-template' }, visible: showRoomTable" ></div>
 
@@ -38,8 +38,8 @@
 
 
 <script type="text/html" id="need-rooms-template">
-	<div class="container well">
-		<h3><span>This zone</span> has no rooms.  Would you like to add a Room?</h3></br>
+	<div  class="container well">
+		<strong><span data-bind="text: zone"></span></strong> has no rooms.  Would you like to add a Room?</br></br>
     	<a class="btn btn-primary btn-large">Add Room</a>		
 	</div>
    
@@ -93,24 +93,26 @@
 		self.showAddRoom = ko.observable(false);
 		self.showRoomTable = ko.observable(false);
 		
-		self.zone = ko.observable("zone name");
+		self.zone = "";
 		
 		
 		
 		self.addZone = function() {
 			self.zones.push(new Zone({ 
-					zone_name: self.newZoneName(),					
-					id: self.zones().length + 1 // remove when pulling from server
+					zone_name: self.newZoneName(),		
+					id: this.id			
+					//id: self.zones().length + 1 // remove when pulling from server
 				}) 		        
 			);		
 			
 			$.ajax("/zones", {
 	            data: ko.toJSON({
-		            zone_name: self.newZoneName()
+		            zone_name: self.newZoneName(),
+		            zone_id: self.id
 		         }),
 	            
 	            type: "post", contentType: "application/json",
-	            success: function(result) { console.log(result) }
+	            success: function(data) { console.log(data) }
 	        });	
 			
 			
@@ -163,12 +165,11 @@
 	   self.getRooms = function() {
 	   	
 	   	self.showAddRoom(false);
-		   self.showRoomTable(true);
+		   self.showRoomTable(true);		   
+		   
+		   self.zone = this.zone_name();
 	   	
-	   	var zone_id = this.id();   	
-	   	self.zone(this.zone_name());
-	   	//alert(self.zone());
-	   	
+	   	var zone_id = this.id();		   	
 	   	
 	   	// Load initial state from server, convert it to Zone instances, then populate self.zones
 		   		   	
